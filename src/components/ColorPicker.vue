@@ -1,7 +1,6 @@
 <template>
   <div>
-    <input v-model="color" @change="emitChange" type="color"/>
-    <p> {{ color }} </p>
+    <input v-model="internalColor" type="color"/>
   </div>
 </template>
 
@@ -9,20 +8,20 @@
 export default {
   name: 'ColorPicker',
 
-  data () {
-    return {
-      color: '#ff0000'
-    }
+  props: {
+    color: String
   },
 
-  mounted () {
-    this.emitChange()
-  },
+  computed: {
+    internalColor: {
+      get () {
+        return this.color
+      },
 
-  methods: {
-    emitChange () {
-      const color = this.color.substr(1).toUpperCase()
-      this.$emit('change', color)
+      set (value) {
+        this.$emit('update:color', value)
+      }
+
     }
   }
 }

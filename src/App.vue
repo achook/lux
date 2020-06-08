@@ -2,25 +2,26 @@
   <div id="app">
     <h1>LED</h1>
       <div class="buttons">
-        <button @click="set(1)">Kolor</button>
-        <button @click="set(2)">Miganie</button>
-        <button @click="set(3)">Fala</button>
-        <button @click="set(4)">Cykl</button>
-        <button @click="set(0)">Wyłącz</button>
+        <button @click="setMode(1)">Kolor</button>
+        <button @click="setMode(2)">Miganie</button>
+        <button @click="setMode(3)">Fala</button>
+        <button @click="setMode(4)">Cykl</button>
+        <button @click="setMode(0)">Wyłącz</button>
       </div>
-      <ColorPicker @change="updateColor" />
+      <ColorPicker v-if="picker" :color.sync="color"/>
   </div>
 </template>
 
 <script>
 import ColorPicker from './components/ColorPicker'
 
-const MQTT_URL = 'malinka.local'
+const MQTT_URL = 'mqtt.server'
 const MQTT_PORT = 9001
 const MQTT_DEVICE = 'lux'
 const MQTT_USER = 'sezamek'
 const MQTT_PASSWORD = 'kANQcGkgeg6rlZnk'
-const MQTT_CHANNEL = 'test'
+const MQTT_CHANNEL = 'device/2/mode'
+const MQTT_CALLBACK_CHANNEL = 'device/2/status'
 
 const mqtt = require('paho-mqtt')
 
@@ -35,31 +36,94 @@ export default {
     return {
       client: null,
       connected: false,
-      color: 'FFFFFF'
+
+      mode: 0,
+      color: '#00FF00',
+
+      picker: false
     }
   },
 
   created () {
     this.client = new mqtt.Client(MQTT_URL, MQTT_PORT, '', MQTT_DEVICE)
-    this.client.connect({
-      userName: MQTT_USER,
-      password: MQTT_PASSWORD,
-      onSuccess: () => { this.connected = true },
-      onFailure: (context, code, message) => { this.throwError(message) }
-    })
+
+    this.client.onConnectionLost = () => {
+      this.connected = false
+      this.connect()
+    }
+
+    this.client.onMessageArrived = (message) => {
+      console.log(message)
+
+      const hexMode = message.payloadString.substr(0, 2)
+      const hexColor = message.payloadString.substr(3)
+
+      this.mode = parseInt(hexMode, 16)
+      this.color = `#${hexColor}`
+
+      this.client.onMessageArrived = () => {}
+    }
+
+    this.connect()
+  },
+
+  computed: {
+    strippedColor () {
+      return this.color.toUpperCase().substr(1)
+    },
+
+    hexMode () {
+      return ('0' + this.mode.toString(16)).substr(-2)
+    }
+  },
+
+  watch: {
+    color () {
+      this.send(this.hexMode, this.strippedColor)
+    },
+
+    mode () {
+      if (this.mode < 3) this.picker = true
+      else this.picker = false
+
+      this.send(this.hexMode, this.strippedColor)
+    }
   },
 
   methods: {
-    set (code) {
+    connect () {
+      this.client.connect({
+        userName: MQTT_USER,
+        password: MQTT_PASSWORD,
+        onSuccess: () => {
+          this.connected = true
+          this.client.subscribe(MQTT_CALLBACK_CHANNEL)
+        },
+        onFailure: (context, code, message) => { this.throwError(message) }
+      })
+    },
+
+    send (code, color) {
       if (!this.connected) return
 
-      const message = new mqtt.Message(code.toString())
+      const opcode = `${code}:${color}`
+      console.log(opcode)
+
+      const message = new mqtt.Message(opcode)
       message.destinationName = MQTT_CHANNEL
       this.client.send(message)
     },
 
-    updateColor (color) {
-      this.color = color
+    setMode (mode) {
+      this.mode = mode
+    },
+
+    enablePicker () {
+      this.picker = true
+    },
+
+    disablePicker () {
+      this.picker = false
     },
 
     throwError (message) {
