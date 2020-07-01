@@ -18,8 +18,8 @@ import ColorPicker from './components/ColorPicker'
 const MQTT_URL = 'mqtt.server'
 const MQTT_PORT = 9001
 const MQTT_DEVICE = 'lux'
-const MQTT_USER = 'sezamek'
-const MQTT_PASSWORD = 'kANQcGkgeg6rlZnk'
+const MQTT_USER = 'led_client'
+const MQTT_PASSWORD = 't7kXRroFJwa5Qf5G'
 const MQTT_CHANNEL = 'device/2/mode'
 const MQTT_CALLBACK_CHANNEL = 'device/2/status'
 
