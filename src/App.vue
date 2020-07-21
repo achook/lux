@@ -1,14 +1,13 @@
 <template>
   <div id="app">
-    <h1>LED</h1>
-      <div class="buttons">
-        <button @click="setMode(1)">Kolor</button>
-        <button @click="setMode(2)">Miganie</button>
-        <button @click="setMode(3)">Fala</button>
-        <button @click="setMode(4)">Cykl</button>
-        <button @click="setMode(0)">Wyłącz</button>
-      </div>
-      <ColorPicker v-if="picker" :color.sync="color"/>
+    <div class="buttons" ref="buttons">
+      <button @click="setMode(1)">Kolor</button>
+      <button @click="setMode(2)">Miganie</button>
+      <button @click="setMode(3)">Fala</button>
+      <button @click="setMode(4)">Cykl</button>
+      <button class="off" @click="setMode(0)">Wyłącz</button>
+    </div>
+    <ColorPicker v-if="picker" :color.sync="color"/>
   </div>
 </template>
 
@@ -40,7 +39,8 @@ export default {
       mode: 0,
       color: '#00FF00',
 
-      picker: false
+      picker: false,
+      firstReceived: false
     }
   },
 
@@ -53,15 +53,20 @@ export default {
     }
 
     this.client.onMessageArrived = (message) => {
-      console.log(message)
+      if (this.firstReceived) return
 
       const hexMode = message.payloadString.substr(0, 2)
       const hexColor = message.payloadString.substr(3)
 
       this.mode = parseInt(hexMode, 16)
       this.color = `#${hexColor}`
+      // eslint-disable-next-line dot-notation
+      this.$refs['buttons'].children[this.mode ? this.mode - 1 : 4].classList.add('current')
 
-      this.client.onMessageArrived = () => {}
+      console.log(this.mode)
+
+      // this.client.onMessageArrived = function () {}
+      this.firstReceived = true
     }
 
     this.connect()
@@ -83,7 +88,7 @@ export default {
     },
 
     mode () {
-      if (this.mode < 3) this.picker = true
+      if (this.mode && this.mode < 3) this.picker = true
       else this.picker = false
 
       this.send(this.hexMode, this.strippedColor)
@@ -115,7 +120,11 @@ export default {
     },
 
     setMode (mode) {
+      // eslint-disable-next-line dot-notation
+      this.$refs['buttons'].children[this.mode ? this.mode - 1 : 4].classList.remove('current')
       this.mode = mode
+      // eslint-disable-next-line dot-notation
+      this.$refs['buttons'].children[this.mode ? this.mode - 1 : 4].classList.add('current')
     },
 
     enablePicker () {
@@ -134,11 +143,61 @@ export default {
 </script>
 
 <style lang="scss">
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  height: 100%;
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Open Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
   text-align: center;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  button {
+    padding: 10px 30px;
+    margin: 10px;
+    width: 200px;
+
+    font-size: inherit;
+    font-weight: bolder;
+
+    background-color: #82c0cc;
+    &.off {
+      color: white;
+      background-color: #a22a3e;
+    }
+
+    border: none;
+
+    &.current {
+      background-color: #16697a;
+      color: white;
+
+      &.off {
+        background-color: #832232;
+      }
+    }
+  }
 }
 </style>
